@@ -1,0 +1,23 @@
+% Filter 1
+% Pass 0.25
+% Stop 0.3
+% Num taps = 120 (order = num_taps - 1 = 119)
+
+pass = 0.25;
+stop = 0.3;
+num_taps = 120;
+order = num_taps - 1;
+f = [0 0.25 0.3 1];
+a = [1 1 0 0];
+
+coeff = remez(order, f, a)
+
+q = quantizer('fixed', 'floor', 'saturate', [8, 8]);
+
+quantized_coeff = quantize(q, coeff)
+
+[h,w] = freqz(quantized_coeff,1,2048);
+
+plot(f,a,w/pi,abs(h))
+legend('Ideal','firpm Design')
+xlabel 'Radian Frequency (\omega/\pi)', ylabel 'Magnitude'
