@@ -2,92 +2,128 @@ import gurobipy as gp
 import scipy as sci
 from enum import Enum, auto
 from dataclasses import dataclass
-# https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=1688880
+import util
+import struct
+# https://ieeexplore.ieee.org/document/4526735
 
+
+# basic constructor should have just time
+# represent coefficients as strings
 
 class Filter_OPT:
-    def __init__(self, band, taps, width, timeout=2*60*60):
+    def __init__(self, timeout=2*60*60):
         self.timeout = timeout
-        self.band = band
+        self.coeff = []
+        self.fixpt = {}
+        self.transform = {}
+        self.stopband = 0
+        self.passband = 0
+        self.taps = 0
+        self.width = 0
+
+        # bit vector 0(heuristic) 0(delay) 0(area)
+        self.type = 0
+        self.model = gp.Model('mcm', env=gp.Env())
+
+        self.model.setParam('OutputFlag', 0)
+        self.model.setParam('PoolSolutions', 1)
+        self.model.setParam('PoolSearchMode', 2)
+        self.model.setParam('TimeLimit', self.timeout)
+        self.model.update()
+
+    def file_load(self, path, passband, stopband):
+        with open(path, 'r') as f:
+            content = f.read()
+            self.coeff = (content
+                          .replace('[', '')
+                          .replace(']', '')
+                          .replace(' ', '')
+                          .replace('\n', '')
+                          .split(','))
+
+        self.passband = passband
+        self.stopband = stopband
+        self.taps = len(self.coeff)
+        self.width = len(self.coeff[0])
+
+        for i in self.coeff:
+            self.fixpt[i] = util.compltoint(i)/(1 << self.width)
+            self.transform[i] = i
+
+    def print_coeff(self):
+        for i in self.coeff:
+            print(f'{i} -> {self.fixpt[i]}')
+
+    # TODO
+    def generate(self, passband, stopband, taps, width, ftype):
+        self.passband = passband
+        self.stopband = stopband
         self.taps = taps
         self.width = width
-        self.models = [None, None, None]
-        self.results = []
-        self.coeff = sci.signal.remez(taps, band)
 
-    @dataclass
-    class Results:
-        var_n: int
-        clause_n: int
-        optv: int
-        adders: int
-        steps: int
-        runtime: float
-
-    class Model(Enum):
-        MAA = auto()
-        MAMDA = auto()
-        MAMDH = auto()
-
-    def init_model(self, model):
-        match model:
-            case self.Model.MAA:
-                self.init_maa()
-            case self.Model.MAMDA:
-                self.init_mamda()
-            case self.Model.MAMDH:
-                self.init_mamdh()
+    # TODO
+    def coeff_transform(self, type='BIN'):
+        match type:
+            case 'MSD':
+                pass
+            case 'CSD':
+                pass
+            case 'BIN':
+                pass
             case _:
-                print("Model Specified Incorrectly")
+                pass
+        pass
 
-    def init_maa(self):
-        # Minimum Area Algorithm (MAA)
-        # optimiznig heuristic
-        self.models[self.Model.MAA.value] = gp.Model("MAA")
+    # TODO
+    def add_area(self):
+        self.type += 1
 
-    def init_mamda(self):
-        # Minimum Area and Minimum Delay Algorithm (MAMDA)
-        # - search spac ereduction
-        self.models[self.Model.MAA.value] = gp.Model("MAMDA")
+        for i in self.transform:
+            print(type(i))
+            util.complprint(i)
 
-    def init_mamdh(self):
-        # Minimum Area and Minimum Delay Heuristic (MAMDH)
-        # - search spac ereduction
-        self.models[self.Model.MAA.value] = gp.Model("MAMDH")
+        pass
 
-    def opt(self, model):
-        if self.models[model.value] is None:
-            self.init_model(model)
+    # TODO
+    def add_delay(self):
+        self.type += 2
+        pass
 
-        if self.models[model.value] is None:
-            exit
+    # TODO
+    def add_heuristic(self):
+        self.type += 4
+        pass
 
-        print(self.models[model.value].runtime)
+    # TODO
+    def show_sol(self):
+        pass
 
+    def optimize(self):
+        if self.type > 0:
+            self.model.optimize()
+        else:
+            self.add_area()
+            self.model.optimize()
 
-# some network representation class
-
-
-# Post processing for Minimum Delay (PPMD)
-# -
-
-
-# algorithm inputs
-# - pass band, stop band
-# - number of taps
-# - width
-
-# solver intermediates
-# - solver variables, solver clauses, objective value
-
-# output heuristics
-# - number of adders
-# - steps (need to dig into what that means)
-# - solver runtime
 
 def main():
-    filter = Filter_OPT((0.10, 0.15), 100, 8)
-    filter.opt(Filter_OPT.Model.MAA)
+    fir1 = Filter_OPT()
+    fir1.file_load(
+        './filter-benchmarks/test-filters-table-0/coeffs/filter3-coeff.txt',
+        0.25, 0.3)
+    fir1.print_coeff()
+    fir1.add_area()
+
+    if 0 == 1:
+        fir2 = Filter_OPT()
+        fir2.file_load(
+            './filter-benchmarks/test-filters-table-0/coeffs/filter5-coeff.txt',
+            0.25, 0.3)
+        fir2.add_area()
+        fir2.add_delay()
+        fir2.optimize()
+        fir2.print_coeff()
+
 
 
 if __name__ == "__main__":
