@@ -1,3 +1,5 @@
+import math
+
 def compltoint(bin_string):
     unsigned = int(bin_string, 2)
     if bin_string[0] == '1':
@@ -59,6 +61,14 @@ def odd(binary_string):
         binary_string = '0' + binary_string
     
     return binary_string
+
+# returns a list of tuples
+def construct_partial_terms(partial_term):
+    initial_partial_terms = [(term1, term2) for term1, term2 in zip(range(1, partial_term, 1), range(partial_term-1, 0, -1))]
+    initial_partial_terms = initial_partial_terms[:math.ceil(len(initial_partial_terms)/2)]
+    print('initial_partial_terms', initial_partial_terms)
+    #for term1, term2 in zip(range(1, partial_term, 1), range(partial_term-1, 0, -1)):
+    #    print(term1,term2)
 
 if __name__ == '__main__':
     for i in ['111111000101110100111010', '111011100011110001001010', '111111110111100000100000',
