@@ -23,6 +23,8 @@ def compl2val(bin_string, num_frac_bits = -1):
     if (num_frac_bits == -1):
         num_frac_bits = len(bin_string)
 
+    print(f'Num fractional bits: {num_frac_bits}')
+    
     val = 0
     positional_weights = [weight - num_frac_bits for weight in range(len(bin_string)-1, -1, -1)]
     print("positional_weights", positional_weights)
@@ -63,12 +65,23 @@ def odd(binary_string):
     return binary_string
 
 # returns a list of tuples
-def construct_partial_terms(partial_term):
-    initial_partial_terms = [(term1, term2) for term1, term2 in zip(range(1, partial_term, 1), range(partial_term-1, 0, -1))]
-    initial_partial_terms = initial_partial_terms[:math.ceil(len(initial_partial_terms)/2)]
-    print('initial_partial_terms', initial_partial_terms)
-    #for term1, term2 in zip(range(1, partial_term, 1), range(partial_term-1, 0, -1)):
-    #    print(term1,term2)
+def construct_partial_terms(partial_term_bin):
+    bit_width = len(partial_term_bin)
+    partial_term = compltoint(partial_term_bin)
+
+    partial_term_pairs = [(term1, term2) for term1, term2 in zip(range(1, partial_term, 1), range(partial_term-1, 0, -1))]
+    partial_term_pairs = partial_term_pairs[:math.ceil(len(partial_term_pairs)/2)]
+    print('partial_term_pairs', partial_term_pairs)
+
+    partial_term_pairs_pos_odd = [(odd(pos(inttocompl(term1, bit_width))), (odd(pos(inttocompl(term2, bit_width)))))
+                                for (term1, term2) in partial_term_pairs]
+
+    print('partial_term_pairs_pos_odd', partial_term_pairs_pos_odd)
+    
+    partial_term_pairs_set = list({tuple(sorted(x)) for x in partial_term_pairs_pos_odd})
+
+    return partial_term_pairs_set
+
 
 if __name__ == '__main__':
     for i in ['111111000101110100111010', '111011100011110001001010', '111111110111100000100000',
