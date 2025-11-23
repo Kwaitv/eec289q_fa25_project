@@ -1,40 +1,32 @@
-def compltoint(bin_string):
-    unsigned = int(bin_string, 2)
-    if bin_string[0] == '1':
-        return unsigned - (1 << len(bin_string))
+from fixedpoint import FixedPoint
+
+
+def genformat(n):
+    return {'signed': True, 'm': 1, 'n': n-1, 'overflow': 'wrap'}
+
+
+def geniformat(n):
+    return {'signed': True, 'm': n, 'n': 0, 'overflow': 'wrap'}
+
+
+def fp_print(x):
+    if x.n == 0:
+        print(f'{bin(x):<{len(x) + 2}} {int(x)}')
     else:
-        return unsigned
+        print(f'{bin(x):<{len(x) + 2}} {float(x)}')
 
 
-def inttocompl(n, width):
-    mask = (1 << width) - 1
-    return f'{n & mask:0{width}b}'
+def odd(fp):
+    while int(fp) % 2 != 1:
+        fp = fp >> 1
+    return fp
 
-
-def complprint(bin_string):
-    print(f"'{bin_string}' ({len(bin_string)
-                             }-bit) converts to: {compltoint(bin_string)}")
-
-
-def pos(binary_string):
-    new_string = list(binary_string)
-    if binary_string[0] == '1':
-        for idx, i in enumerate(binary_string):
-            if i == '0':
-                new_string[idx] = '1'
-            else:
-                new_string[idx] = '0'
-
-        return "".join(new_string), 2) + 1
-    else:
-        return "".join(new_string)
-
-
-def odd(binary_string):
-    pass
+def pos(fp):
+    return abs(fp)
 
 
 if __name__ == '__main__':
+    qformat = geniformat(24)
     for i in ['111111000101110100111010', '111011100011110001001010', '111111110111100000100000',
              '000000011110010100000011', '000001110111100111111000', '000001111100001010010010',
              '000000100000001000001100', '111110001000110111011101', '111100011010011110100010',
@@ -45,17 +37,21 @@ if __name__ == '__main__':
              '000000100000001000001100', '000001111100001010010010', '000001110111100111111000',
              '000000011110010100000011', '111111110111100000100000', '111011100011110001001010',
              '111111000101110100111010']:
-        #print(eval('0b'+i))
-        print(i, pos(i))
+        x = FixedPoint(f'0b{i}', **qformat)
+        fp_print(x)
+
 
     print()
     for i in ['100000000000000000001111']:
-        print(i, pos(i))
+        x = FixedPoint(f'0b{i}', **qformat)
+        fp_print(x)
 
     print()
     for i in ['100000000000000000000111', '100000000000000000001011']:
-        print(i, pos(i))
+        x = FixedPoint(f'0b{i}', **qformat)
+        fp_print(x)
 
-
+    qformat = genformat(4)
     for i in ['1111']:
-        print(i, pos(i))
+        x = FixedPoint(f'0b{i}', **qformat)
+        fp_print(x)

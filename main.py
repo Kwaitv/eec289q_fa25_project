@@ -2,6 +2,7 @@ import gurobipy as gp
 import scipy as sci
 from enum import Enum, auto
 from dataclasses import dataclass
+from fixedpoint import FixedPoint
 import util
 import struct
 # https://ieeexplore.ieee.org/document/4526735
@@ -20,6 +21,8 @@ class Filter_OPT:
         self.passband = 0
         self.taps = 0
         self.width = 0
+        self.qformat = {}
+        self.qiformat = {}
 
         # bit vector 0(heuristic) 0(delay) 0(area)
         self.type = 0
@@ -32,27 +35,33 @@ class Filter_OPT:
         self.model.update()
 
     def file_load(self, path, passband, stopband):
+        str_coeffs = []
         with open(path, 'r') as f:
             content = f.read()
-            self.coeff = (content
+            str_coeffs = (content
                           .replace('[', '')
                           .replace(']', '')
                           .replace(' ', '')
                           .replace('\n', '')
                           .split(','))
 
+        self.qformat = util.genformat(len(str_coeffs[0]))
+        self.qiformat = util.geniformat(len(str_coeffs[0]))
+
+        for i in str_coeffs:
+            x = FixedPoint(f'0b{i}', **self.qformat)
+            self.coeff.append(x)
+            self.fixpt[i] = FixedPoint(f'0b{i}', **self.qiformat)
+            self.transform[i] = x
+
         self.passband = passband
         self.stopband = stopband
         self.taps = len(self.coeff)
         self.width = len(self.coeff[0])
 
-        for i in self.coeff:
-            self.fixpt[i] = util.compltoint(i)/(1 << self.width)
-            self.transform[i] = i
-
     def print_coeff(self):
         for i in self.coeff:
-            print(f'{i} -> {self.fixpt[i]}')
+            util.fp_print(i)
 
     # TODO
     def generate(self, passband, stopband, taps, width, ftype):
@@ -79,8 +88,7 @@ class Filter_OPT:
         self.type += 1
 
         for i in self.transform:
-            print(type(i))
-            util.complprint(i)
+            util.fp_print(self.transform[i])
 
         pass
 
