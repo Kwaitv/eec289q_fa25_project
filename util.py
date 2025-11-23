@@ -15,6 +15,24 @@ def complprint(bin_string):
     print(f"'{bin_string}' ({len(bin_string)
                              }-bit) converts to: {compltoint(bin_string)}")
 
+def compl2val(bin_string, num_frac_bits = -1):
+
+    print(f'bin_string {bin_string} with length {len(bin_string)}')
+    if (num_frac_bits == -1):
+        num_frac_bits = len(bin_string)
+
+    val = 0
+    positional_weights = [weight - num_frac_bits for weight in range(len(bin_string)-1, -1, -1)]
+    print("positional_weights", positional_weights)
+
+    for weight, bin_val in zip(positional_weights, bin_string):
+        if (weight == positional_weights[0]):
+            print(f'Subtracting {2**weight}*{int(bin_val)}={2**weight * int(bin_val)}')
+            val -= 2**weight * int(bin_val)
+        else:
+            print(f'Adding {2**weight}*{int(bin_val)}={2**weight * int(bin_val)}')
+            val += 2**weight * int(bin_val)
+    return val
 
 def pos(binary_string):
     new_string = list(binary_string)
@@ -24,15 +42,23 @@ def pos(binary_string):
                 new_string[idx] = '1'
             else:
                 new_string[idx] = '0'
-
-        return "".join(new_string), 2) + 1
+        
+        new_string = "".join(new_string)
+        
+        bit_width = len(new_string)
+        val = compltoint(new_string)
+        val += 1
+        return inttocompl(val, bit_width)
     else:
         return "".join(new_string)
 
-
 def odd(binary_string):
-    pass
 
+    while binary_string[-1] != '1':
+        binary_string = binary_string[:-1]
+        binary_string = '0' + binary_string
+    
+    return binary_string
 
 if __name__ == '__main__':
     for i in ['111111000101110100111010', '111011100011110001001010', '111111110111100000100000',
