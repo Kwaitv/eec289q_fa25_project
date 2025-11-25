@@ -71,16 +71,51 @@ def construct_partial_terms(partial_term_bin):
 
     partial_term_pairs = [(term1, term2) for term1, term2 in zip(range(1, partial_term, 1), range(partial_term-1, 0, -1))]
     partial_term_pairs = partial_term_pairs[:math.ceil(len(partial_term_pairs)/2)]
-    print('partial_term_pairs', partial_term_pairs)
 
     partial_term_pairs_pos_odd = [(odd(pos(inttocompl(term1, bit_width))), (odd(pos(inttocompl(term2, bit_width)))))
                                 for (term1, term2) in partial_term_pairs]
-
-    print('partial_term_pairs_pos_odd', partial_term_pairs_pos_odd)
     
-    partial_term_pairs_set = list({tuple(sorted(x)) for x in partial_term_pairs_pos_odd})
+    partial_term_pairs_set_bin = list({tuple(sorted(x)) for x in partial_term_pairs_pos_odd})
 
-    return partial_term_pairs_set
+    partial_term_pairs_set_val = []
+
+    for (bin_term1, bin_term2) in partial_term_pairs_set_bin:
+        for (int_term1, int_term2) in partial_term_pairs:
+            # if bin_term1 shifted to the left in (int_term1, int_term2)
+            # and bin_term2 be shifted to the left in (int_term1, int_term2)
+            # then, add to partial_term_paris_set_val
+
+            reduced_term1 = compltoint(bin_term1)
+            reduced_term2 = compltoint(bin_term2)
+
+            found_match1 = reduced_term1 in (int_term1, int_term2)
+
+            shift_val = 1
+
+            while not found_match1 and shift_val < bit_width:
+                shifted_reduced_term1 = reduced_term1 << shift_val
+                
+                found_match1 = shifted_reduced_term1 in (int_term1, int_term2)
+                
+                shift_val += 1
+
+            found_match2 = reduced_term2 in (int_term1, int_term2)
+            
+            shift_val = 1
+
+            while not found_match2 and shift_val < bit_width:
+                shifted_reduced_term2 = reduced_term2 << shift_val
+                
+                found_match2 = shifted_reduced_term2 in (int_term1, int_term2)
+                
+                shift_val += 1
+            
+            if found_match1 and found_match2:
+                partial_term_pairs_set_val.append((int_term1, int_term2))
+                break
+
+
+    return partial_term_pairs_set_val, partial_term_pairs_set_bin
 
 
 if __name__ == '__main__':
