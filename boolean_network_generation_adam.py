@@ -79,28 +79,71 @@ def build_adder_mux_network(aset_dict_bin, aset_dict_val):
     Constructs the network based on the Aset_dict definitions.
     
     Args:
-        aset_dict: Dict {coeff: [(p1, p2), ...]}
-        base_input_gate: The logic gate providing the base signal (e.g., '1')
+        aset_dict_bin: Dict {coeff: [(p1, p2), ...]} where p1, p2, ... are in 2's complement binary
+        aset_dict_val: Dict {coeff: [(p1, p2), ...]} where p1, p2, ... are in decimal
     """
     
-    # Registry to store constructed gates. 
-    # Maps Coefficient (int) -> Gate Object
+    # Registry to store constructed gates.
+    # Maps Coefficient at level x to gate objects 
+    # level (int) -> {coeff (int) -> Gate Object}
     term_registry = {
-        1: 'input_wire'  # Base case: Coeff 1 is the input signal itself
+        0:{
+            1: 'input_wire'  # Base case: Coeff 1 is the input signal itself
+        }
     }
 
-    # Helper to get a wire (either existing gate or raw value)
+    # Helper to get a wire (either existing gate or raw value) and returns the last
+    # logic level
     def get_wire(val):
-        if val in term_registry:
-            return term_registry[val]
-        else:
-            # If term doesn't exist, we assume it's a raw 0 
-            # or implies an error in the sort order of Aset_dict
-            #print(f"Warning: Term {val} not found. Using 0.")
-            return 0
+
+        for logic_level in term_registry.keys():
+            if val in term_registry[logic_level]:
+                return term_registry[logic_level][val], logic_level
+        
+        # If term doesn't exist, we assume it's a raw 0 
+        # or implies an error in the sort order of Aset_dict
+        return 0, -1
+
+    def connect_mux_inputs(mux, coeff, pairs, new_level=False):
+        # Iterate through all possible constructions (tuples)
+        for i, (p1, p2) in enumerate(pairs):
+            # Create an Adder for this specific option
+            val_p1, val_p2 = aset_dict_val[coeff][i]
+
+            wire_p1 = -1
+            wire_p2 = -1
+            logic_level_p1 = -1
+            logic_level_p2 = -1
+
+            if (util.compltoint(p1) == 1):
+                wire_p1 = f'1_<<_{np.log2(val_p1)}'
+            else:
+                wire_p1, logic_level_p1 = get_wire(util.compltoint(p1))
+
+            if (util.compltoint(p2) == 1):
+                wire_p2 = f'1_<<_{np.log2(val_p2)}'
+            else:
+                wire_p2, logic_level_p2 = get_wire(util.compltoint(p2))
+            
+            if (not new_level):
+                last_logic_level = len(term_registry.keys())
+                if (logic_level_p1 == last_logic_level or logic_level_p2 == last_logic_level):
+                    continue
+
+            option_adder = Adder(f"Add_{coeff}_opt({val_p1},{val_p2})")
+            print(f"Created option Adder for {coeff}: {val_p1} and {val_p2}")
+
+            option_adder.set_pins(wire_p1, wire_p2)
+            
+            # Add this adder as an input to the Mux
+            mux.add_input(option_adder)
+
+            return mux
+
 
     # Iterate through coefficients (ensure we build small terms before large ones)
     coeffs_queue = list(aset_dict_bin.keys())
+    coeffs_queue.sort()
 
     last_mux = Mux('Empty Mux')
 
@@ -109,11 +152,8 @@ def build_adder_mux_network(aset_dict_bin, aset_dict_val):
     while len(coeffs_queue) > 0:
 
         print(f'Current coeff queue {coeffs_queue}')
-        
         coeff = coeffs_queue.pop(0)
-
         pairs = aset_dict_bin[coeff]
-        
         input_gate = False
 
         for i, (p1,p2) in enumerate(pairs):
@@ -124,8 +164,8 @@ def build_adder_mux_network(aset_dict_bin, aset_dict_val):
                 print('Found input gate')
                 break
 
-        # CASE 1: Single Pair or Input Gate -> Create a simple SUM block
-        if len(pairs) == 1 or input_gate:
+        # CASE 1: Input Gate -> Create a simple SUM block
+        if input_gate:
                 
             val_p1, val_p2 = aset_dict_val[coeff][input_pair_index]
             p1, p2 = aset_dict_bin[coeff][input_pair_index]
@@ -133,11 +173,27 @@ def build_adder_mux_network(aset_dict_bin, aset_dict_val):
             # Create the Adder
             new_adder = Adder(f"Add_({val_p1, val_p2})")
             
-            # Wire inputs (checking if they already exist)
-            new_adder.set_pins(get_wire(util.compltoint(p1)), get_wire(util.compltoint(p2)))
+            # Wire inputs         
+            
+            if (val_p1 == 1):
+                wire_p1 = term_registry[0][1]
+            else:
+                wire_p1 = f'1_<<_{np.log2(val_p1)}'
+
+            if (val_p2 == 1):
+                wire_p2 = term_registry[0][1]
+            else:
+                wire_p2 = f'1_<<_{np.log2(val_p2)}'
+                        
+            new_adder.set_pins(wire_p1, wire_p2)
             
             # Register this new adder as the source for 'coeff'
-            term_registry[coeff] = new_adder
+            new_logic_level =  1
+
+            if (new_logic_level not in term_registry):
+                term_registry[new_logic_level] = {}
+
+            term_registry[new_logic_level][coeff] = new_adder
             print(f"Created Adder for {coeff} using inputs {val_p1} and {val_p2}")
 
         # CASE 2: Multiple Pairs -> Create MUX of SUMs
@@ -147,15 +203,30 @@ def build_adder_mux_network(aset_dict_bin, aset_dict_val):
 
             # Iterate through all possible constructions (tuples)
             for i, (p1, p2) in enumerate(pairs):
-                lookup_result_p1 = get_wire(util.compltoint(p1))
-                lookup_result_p2 = get_wire(util.compltoint(p2))
 
-                if (lookup_result_p1 == 0 or lookup_result_p2 == 0):
+                val_p1, val_p2 = aset_dict_val[coeff][i]
+
+                wire_p1 = -1
+                wire_p2 = -1
+                logic_level_p1 = -1
+                logic_level_p2 = -1
+
+                if (util.compltoint(p1) == 1):
+                    wire_p1 = f'1_<<_{np.log2(val_p1)}'
+                else:
+                    wire_p1, logic_level_p1 = get_wire(util.compltoint(p1))
+
+                if (util.compltoint(p2) == 1):
+                    wire_p2 = f'1_<<_{np.log2(val_p2)}'
+                else:
+                    wire_p2, logic_level_p2 = get_wire(util.compltoint(p2))
+                
+                if (wire_p1 == 0 or wire_p2 == 0):
                     all_inputs_constructed = False
-                    break
             
             if (not all_inputs_constructed):
                 coeffs_queue.append(coeff)
+                print('Not all partial terms constructed')
                 continue
             
             print('All partial terms constructed')
@@ -163,34 +234,26 @@ def build_adder_mux_network(aset_dict_bin, aset_dict_val):
             # Create the Mux
             new_mux = Mux(f"Mux_{coeff}")
             
-            #print(f"Processing Mux for {coeff} with {len(pairs)} options:")
+            connected_mux = connect_mux_inputs(new_mux, coeff, pairs)
             
-            # Iterate through all possible constructions (tuples)
-            for i, (p1, p2) in enumerate(pairs):
-                # Create an Adder for this specific option
-                val_p1, val_p2 = aset_dict_val[coeff][i]
+            # Register the Mux as the source for 'coeff'            
+            last_logic_level = len(term_registry.keys())
 
-                option_adder = Adder(f"Add_{coeff}_opt({val_p1},{val_p2})")
+            if (len(connected_mux.inputs) > 0):            
+                term_registry[last_logic_level][coeff] = connected_mux
+            else:
+                connected_mux = connect_mux_inputs(new_mux, coeff, pairs, new_level=True)
+                new_logic_level = last_logic_level + 1
 
-                print(f"Created option Adder for {coeff}: {val_p1} and {val_p2}")
-                
-                # Wire the adder
-                option_adder.set_pins(get_wire(util.compltoint(p1)), get_wire(util.compltoint(p2)))
-                
-                # Add this adder as an input to the Mux
-                new_mux.add_input(option_adder)
-                #print(f"  - Option {i}: Adder({p1}, {p2}) wired to Mux")
-
-            # Register the Mux as the source for 'coeff'
-            term_registry[coeff] = new_mux
+                term_registry[new_logic_level] = {}
+                term_registry[new_logic_level][coeff] = connected_mux
 
             print(f"Created new Mux for {coeff}")
 
-
             if (len(coeffs_queue) == 0):
-                last_mux = new_mux
+                last_mux = connected_mux
 
-    return last_mux
+    return last_mux, term_registry
 
 def print_adder_mux_network(logic_gate):
     """
@@ -251,6 +314,6 @@ while len(Cset) > 0:
 #    print(f'Aset_dict_val[{coeff}] = {Aset_dict_val[coeff]}')
 #    print(f'Aset_dict_bin[{coeff}] = {Aset_dict_bin[coeff]}')
 
-last_mux = build_adder_mux_network(Aset_dict_bin, Aset_dict_val)
+last_mux, term_registry = build_adder_mux_network(Aset_dict_bin, Aset_dict_val)
 
 #print_adder_mux_network(last_mux)
