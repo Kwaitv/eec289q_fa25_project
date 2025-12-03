@@ -19,8 +19,8 @@ def dfs(pt, ORs, ANDs):
   
   ORs[pt] = or_init()
   for (p1, p2) in lookup[pt]:
-    pair_AND = and_iniit(p1, p2)
-    ANDs[f'{p1}_{p2}'] = pari_AND
+    pair_AND = and_init(p1, p2)
+    ANDs[f'{p1}_{p2}'] = pair_AND
     ORs[pt].ands.append(pair_AND)
 
     if !minimal(p1):
