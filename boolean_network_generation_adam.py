@@ -286,40 +286,43 @@ class OR:
         or_str += '])'
         return or_str
 
+ORs = {} # {pt:OR(pt,['p1_p2', 'p3_p4',...]), pt_next:OR(pt_next, 'p8_p9', ... ), ....}
+ANDs = {} # {'p1_p2':AND(p1,p2,pt), 'p3_p4':AND(p3,p4,pt), ...}
+Minimal_PTs = {} # {'opt3', 'opt5', 'opt9', ...}
 
 def build_boolean_netowrk(Aset_dict_bin, Aset_dict_val, POs):
-    ORs = {} # {pt:OR(pt,['p1_p2', 'p3_p4',...]), pt_next:OR(pt_next, 'p8_p9', ... ), ....}
-    ANDs = {} # {'p1_p2':AND(p1,p2,pt), 'p3_p4':AND(p3,p4,pt), ...}
-    Minimal_PTs = {} # {'opt3', 'opt5', 'opt9', ...}
 
     for po in POs:
         dfs(po)
 
-    def dfs(pt):
-        ORs[pt] = OR(pt)
+def dfs(pt):
+    ORs[pt] = OR(pt)
 
-        for i, (val_p1,val_p2) in Aset_dict_val[pt]:
-            ANDs[f'{val_p1}_{val_p2}'] = AND(pt,val_p1,val_p2)
-            ORs[pt].ands.append(f'{val_p1}_{val_p2}')
+    for i, (val_p1,val_p2) in Aset_dict_val[pt]:
+        ANDs[f'{val_p1}_{val_p2}'] = AND(pt,val_p1,val_p2)
+        ORs[pt].ands.append(f'{val_p1}_{val_p2}')
 
-        if not minimal(p1):
-            dfs(p1)
-        else:
-            Minimal_PTs.add(f'optvar{p1}')
+    if not minimal(p1):
+        dfs(p1)
+    else:
+        Minimal_PTs.add(f'optvar{p1}')
+
+    if not minimal(p2):
+        dfs(p2)
+    else:
+        Minimal_PTs.add(f'optvar{p2}')
+
+    return
+
+
+def minimal(pt):
+    minimal_val = False
     
-        if not minimal(p2):
-            dfs(p2)
-        else:
-            Minimal_PTs.add(f'optvar{p2}')
-
-    def minimal(pt):
-        minimal_val = False
-        
-        for i, (val_p1, val_p2) in Aset_dict_val[pt]:
-            if util.compltoint(pt) == 1 and util.compltoint(pt) == 1:
-                minimal_val = True
-        
-        return minimal_val
+    for i, (val_p1, val_p2) in Aset_dict_val[pt]:
+        if util.compltoint(pt) == 1 and util.compltoint(pt) == 1:
+            minimal_val = True
+    
+    return minimal_val
 
 
 #coeffs = ['00011010', '01001011', '11111110', '11111111', '00000111', '01000001', '00001001', '00000100', '00011100', '10010110']
@@ -365,4 +368,9 @@ while len(Cset) > 0:
 
 #print_adder_mux_network(last_mux)
 
-build_boolean_netowrk(Aset_dict_bin, Aset_dict_val, coeffs)
+coeffs_int = [util.inttocompl(coeff, bit_width) for coeff in coeffs]
+build_boolean_netowrk(Aset_dict_bin, Aset_dict_val, coeffs_int)
+
+print(ORs)
+print(ANDs)
+print(Minimal_PTs)
