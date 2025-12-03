@@ -5,13 +5,13 @@ def compltoint(bin_string):
     if bin_string[0] == '1':
         return unsigned - (1 << len(bin_string))
     else:
-        return unsigned
+        print(f'{bin(x):<{len(x) + 2}} {float(x)}')
 
 
-def inttocompl(n, width):
-    mask = (1 << width) - 1
-    return f'{n & mask:0{width}b}'
-
+def odd(fp):
+    while int(fp) % 2 != 1:
+        fp = fp >> 1
+    return fp
 
 def complprint(bin_string):
     print(f"'{bin_string}' ({len(bin_string)
@@ -117,8 +117,8 @@ def construct_partial_terms(partial_term_bin):
 
     return partial_term_pairs_set_val, partial_term_pairs_set_bin
 
-
 if __name__ == '__main__':
+    qformat = geniformat(24)
     for i in ['111111000101110100111010', '111011100011110001001010', '111111110111100000100000',
              '000000011110010100000011', '000001110111100111111000', '000001111100001010010010',
              '000000100000001000001100', '111110001000110111011101', '111100011010011110100010',
@@ -129,17 +129,21 @@ if __name__ == '__main__':
              '000000100000001000001100', '000001111100001010010010', '000001110111100111111000',
              '000000011110010100000011', '111111110111100000100000', '111011100011110001001010',
              '111111000101110100111010']:
-        #print(eval('0b'+i))
-        print(i, pos(i))
+        x = FixedPoint(f'0b{i}', **qformat)
+        fp_print(x)
+
 
     print()
     for i in ['100000000000000000001111']:
-        print(i, pos(i))
+        x = FixedPoint(f'0b{i}', **qformat)
+        fp_print(x)
 
     print()
     for i in ['100000000000000000000111', '100000000000000000001011']:
-        print(i, pos(i))
+        x = FixedPoint(f'0b{i}', **qformat)
+        fp_print(x)
 
-
+    qformat = genformat(4)
     for i in ['1111']:
-        print(i, pos(i))
+        x = FixedPoint(f'0b{i}', **qformat)
+        fp_print(x)
