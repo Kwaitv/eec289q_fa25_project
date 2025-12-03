@@ -1,0 +1,41 @@
+inputs:
+lookup = {
+  "{partial_term}": [(p1,p2) ....], 
+}
+POs = [ PTs that ar pos]
+
+alg:
+
+PO_ORs = {}
+ORs = {}
+ANDs = {}
+Minimal_PTs = {}
+
+for po in POs:
+  dfs(po) 
+  PO_ORS[po] = ORs[po]
+
+def dfs(pt, ORs, ANDs):
+  
+  ORs[pt] = or_init()
+  for (p1, p2) in lookup[pt]:
+    pair_AND = and_iniit(p1, p2)
+    ANDs[f'{p1}_{p2}'] = pari_AND
+    ORs[pt].ands.append(pair_AND)
+
+    if !minimal(p1):
+      dfs(p1, ORs, ANDs)
+    else:
+      Minimal_PTs.append(p1)
+
+    if !minimal(p2):
+      dfs(p2, ORs, ANDs)
+    else:
+      Minimal_PTs.append(p2)
+
+#notes
+a PT is minimal if can implement with 1<<n and 1<<m where m,n are pos ints
+
+make sure all gates exist once prob in ORs and ANDs and all other places they
+show up are as references/pointers
+
