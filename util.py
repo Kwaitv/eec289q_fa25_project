@@ -5,8 +5,7 @@ def compltoint(bin_string):
     if bin_string[0] == '1':
         return unsigned - (1 << len(bin_string))
     else:
-        print(f'{bin(x):<{len(x) + 2}} {float(x)}')
-
+        return unsigned
 
 def odd(fp):
     while int(fp) % 2 != 1:
