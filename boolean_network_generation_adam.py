@@ -269,61 +269,81 @@ class AND:
         self.p2 = p2
         self.pt = pt
 
+        self.en = 0
+
     def __repr__(self):
         return f'AND({self.pt},{self.p1},{self.p2})'
 
 class OR:
-    def __init__(self, ands = [], pt = None):
-        self.ands = ands
+    def __init__(self, pt = None, ands = None):
+        
+        if ands is None:
+            self.ands = []
+        else:
+            self.ands = ands
+
         self.pt = pt
 
     def __repr__(self):
-        or_str = f'OR({pt},['
 
-        for and_gate in ands:
-            or_str += and_gate
-        
-        or_str += '])'
-        return or_str
+        return f"OR({self.pt},[{', '.join(self.ands)}])"','
 
 ORs = {} # {pt:OR(pt,['p1_p2', 'p3_p4',...]), pt_next:OR(pt_next, 'p8_p9', ... ), ....}
 ANDs = {} # {'p1_p2':AND(p1,p2,pt), 'p3_p4':AND(p3,p4,pt), ...}
-Minimal_PTs = {} # {'opt3', 'opt5', 'opt9', ...}
+Minimal_PTs = set([]) # ['opt3', 'opt5', 'opt9', ...]
 
 def build_boolean_netowrk(Aset_dict_bin, Aset_dict_val, POs):
 
-    for po in POs:
-        dfs(po)
+    def minimal(pt):
+        minimal_val = False
+        
+        if pt == 1:
+            return True
 
-def dfs(pt):
-    ORs[pt] = OR(pt)
+        for i, (p1, p2) in enumerate(Aset_dict_bin[pt]):
+            if util.compltoint(p1) == 1 and util.compltoint(p2) == 1:
+                minimal_val = True
+        
+        return minimal_val
 
-    for i, (val_p1,val_p2) in Aset_dict_val[pt]:
-        ANDs[f'{val_p1}_{val_p2}'] = AND(pt,val_p1,val_p2)
-        ORs[pt].ands.append(f'{val_p1}_{val_p2}')
+    def bfs(PTs):
+        
+        if (len(PTs) == 0):
+            return
 
-    if not minimal(p1):
-        dfs(p1)
-    else:
-        Minimal_PTs.add(f'optvar{p1}')
+        next_PTs = set([])
 
-    if not minimal(p2):
-        dfs(p2)
-    else:
-        Minimal_PTs.add(f'optvar{p2}')
+        for pt in PTs:
+        
+            ORs[pt] = OR(pt=pt)
 
-    return
+            for i, (val_p1,val_p2) in enumerate(Aset_dict_val[pt]):
+                if (val_p1 in PTs or val_p2 in PTs):
+                    continue
+                
+                ANDs[f'{val_p1}_{val_p2}'] = AND(pt,val_p1,val_p2)
+                ORs[pt].ands.append(f'{val_p1}_{val_p2}')
 
+                # Extract positive and odd coefficients
+                p1, p2 = Aset_dict_bin[pt][i]
+                p1_int = util.compltoint(p1)
+                p2_int = util.compltoint(p2)
 
-def minimal(pt):
-    minimal_val = False
-    
-    for i, (val_p1, val_p2) in Aset_dict_val[pt]:
-        if util.compltoint(pt) == 1 and util.compltoint(pt) == 1:
-            minimal_val = True
-    
-    return minimal_val
+                if not minimal(p1_int):
+                    next_PTs.add(p1_int)
+                else:
+                    Minimal_PTs.add(f'optvar{p1_int}')
 
+                if not minimal(p2_int):
+                    next_PTs.add(p2_int)
+                else:
+                    Minimal_PTs.add(f'optvar{p2_int}')
+        
+        bfs(next_PTs)
+        
+        return
+
+    bfs(POs)
 
 #coeffs = ['00011010', '01001011', '11111110', '11111111', '00000111', '01000001', '00001001', '00000100', '00011100', '10010110']
 coeffs = ['00001111']
@@ -368,9 +388,11 @@ while len(Cset) > 0:
 
 #print_adder_mux_network(last_mux)
 
-coeffs_int = [util.inttocompl(coeff, bit_width) for coeff in coeffs]
+#print(Aset_dict_val)
+
+coeffs_int = [util.compltoint(coeff) for coeff in coeffs]
 build_boolean_netowrk(Aset_dict_bin, Aset_dict_val, coeffs_int)
 
 print(ORs)
-print(ANDs)
-print(Minimal_PTs)
+#print(ANDs)
+#print(Minimal_PTs)
