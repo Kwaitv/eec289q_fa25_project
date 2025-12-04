@@ -79,7 +79,6 @@ def construct_partial_terms(partial_term_bin):
                                 for (term1, term2) in partial_term_pairs]
     
     partial_term_pairs_set_bin = list({tuple(sorted(x)) for x in partial_term_pairs_pos_odd})
-
     partial_term_pairs_set_val = []
 
     for (bin_term1, bin_term2) in partial_term_pairs_set_bin:
@@ -117,8 +116,27 @@ def construct_partial_terms(partial_term_bin):
                 partial_term_pairs_set_val.append((int_term1, int_term2))
                 break
 
+    new_partial_term_pairs_set_val = set([])
+    new_partial_term_pairs_set_bin = set([])
 
-    return partial_term_pairs_set_val, partial_term_pairs_set_bin
+    for i, (val_term1, val_term2) in enumerate(partial_term_pairs_set_val):
+        
+        val_term1_bin = inttocompl(val_term1, bit_width)
+        val_term2_bin = inttocompl(val_term2, bit_width)
+
+        reduced_term1_bin, reduced_term2_bin = partial_term_pairs_set_bin[i]
+
+        include_term = True
+
+        for i, bit in enumerate(val_term1_bin):
+            if val_term1_bin[i] == '1' and val_term2_bin[i] == '1':
+                include_term = False
+
+        if include_term:
+            new_partial_term_pairs_set_val.add((val_term1, val_term2))
+            new_partial_term_pairs_set_bin.add((reduced_term1_bin, reduced_term2_bin))
+    
+    return list(new_partial_term_pairs_set_val), list(new_partial_term_pairs_set_bin)
 
 #if __name__ == '__main__':
 #    for i in ['111111000101110100111010', '111011100011110001001010', '111111110111100000100000',
