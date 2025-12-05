@@ -321,7 +321,7 @@ def build_boolean_netowrk(Aset_dict_bin, Aset_dict_val, POs):
                 if (val_p1 in PTs or val_p2 in PTs):
                     continue
                 
-                ANDs[f'{val_p1}_{val_p2}'] = AND(pt,val_p1,val_p2)
+                ANDs[f'{val_p1}_{val_p2}'] = AND(val_p1,val_p2,pt)
                 ORs[pt].ands.append(f'{val_p1}_{val_p2}')
 
                 # Extract positive and odd coefficients
@@ -394,5 +394,5 @@ coeffs_int = [util.compltoint(coeff) for coeff in coeffs]
 build_boolean_netowrk(Aset_dict_bin, Aset_dict_val, coeffs_int)
 
 print(ORs)
-#print(ANDs)
-#print(Minimal_PTs)
+print(ANDs)
+print(Minimal_PTs)
