@@ -15,9 +15,11 @@ import boolean_network_generation_adam as bn
 # generate gurobipi model
 # run sorted
 
-print(bn.Minimal_PTs_arr)
+if __name__ == "__main__":
+    print(bn.Minimal_PTs_arr)
 pts = bn.Minimal_PTs_arr + sorted(list(bn.ORs.keys()))
-print("pts", pts)
+if __name__ == "__main__":
+    print("pts", pts)
 
 
 def has_shift(key):
@@ -47,16 +49,18 @@ or_pt = mcm_ilp.addVars(
 shift_pt = mcm_ilp.addVars(
     filter(has_shift, bn.ANDs.keys()), name='shift', vtype=gp.GRB.BINARY)
 
-# enumerating time
-print("primal:", prime_pt, "\n")
-print("and", and_pt, "\n")
-print("or", or_pt, "\n")
-print("shift", shift_pt, "\n")
+if __name__ == "__main__":
+    # enumerating time
+    print("primal:", prime_pt, "\n")
+    print("and", and_pt, "\n")
+    print("or", or_pt, "\n")
+    print("shift", shift_pt, "\n")
 
 # And Constraints
 for and_gate in bn.ANDs:
     pt1, pt2 = map(int, and_gate.split("_"))
-    print("and gate", pt1, pt2, bn.ANDs[and_gate])
+    if __name__ == "__main__":
+        print("and gate", pt1, pt2, bn.ANDs[and_gate])
     C = and_pt[and_gate]
     A = shift_pt[f'{pt1}_{pt2}'] if (pt1 == 1) else \
         prime_pt[pt1] if (pt1 in bn.Minimal_PTs_arr) else \
@@ -70,7 +74,8 @@ for and_gate in bn.ANDs:
 
 # instantiate ors after
 for or_gate in bn.ORs:
-    print(or_gate, bn.ORs[or_gate])
+    if __name__ == "__main__":
+        print(or_gate, bn.ORs[or_gate])
     C = or_pt[or_gate]
     reduce = 0
     count = 0
@@ -83,36 +88,39 @@ for or_gate in bn.ORs:
 
     mcm_ilp.addConstr(reduce - C >= 0)
     mcm_ilp.update()
-    print("reduce:", reduce - C)
+    if __name__ == "__main__":
+        print("reduce:", reduce - C)
 
 # set POs high
 for or_gate in or_pt:
     if or_gate in bn.coeffs_int:
-        print("PO", or_gate)
+        if __name__ == "__main__":
+            print("PO", or_gate)
         mcm_ilp.addConstr(or_pt[or_gate] == 1)
 
 mcm_ilp.setObjective(
     prime_pt.sum() + and_pt.sum(),
     gp.GRB.MINIMIZE)
 
-mcm_ilp.update()
 
-# pre run
-print()
-print("Model Pre Run")
-print("primes", prime_pt)
+if __name__ == "__main__":
+    mcm_ilp.update()
+    # pre run
+    print()
+    print("Model Pre Run")
+    print("primes", prime_pt)
 
-print("AND Gates")
-for and_gate in and_pt:
-    print(and_gate, and_pt[and_gate])
+    print("AND Gates")
+    for and_gate in and_pt:
+        print(and_gate, and_pt[and_gate])
 
-print("OR Gates")
-for or_gate in or_pt:
-    print(or_gate, or_pt[or_gate])
+    print("OR Gates")
+    for or_gate in or_pt:
+        print(or_gate, or_pt[or_gate])
 
-print("shifts")
-for shift in shift_pt:
-    print(shift, shift_pt[shift])
+    print("shifts")
+    for shift in shift_pt:
+        print(shift, shift_pt[shift])
 
 
 mcm_ilp.update()
@@ -120,18 +128,19 @@ mcm_ilp.optimize()
 mcm_ilp.update()
 
 # print solution
-print()
-print("Model Post Run")
-print(prime_pt)
+if __name__ == "__main__":
+    print()
+    print("Model Post Run")
+    print(prime_pt)
 
-print("AND Gates")
-for and_gate in and_pt:
-    print(and_gate, and_pt[and_gate])
+    print("AND Gates")
+    for and_gate in and_pt:
+        print(and_gate, and_pt[and_gate])
 
-print("OR Gates")
-for or_gate in or_pt:
-    print(or_gate, or_pt[or_gate])
+    print("OR Gates")
+    for or_gate in or_pt:
+        print(or_gate, or_pt[or_gate])
 
-print("Shifted inputs")
-for shift in shift_pt:
-    print(shift, shift_pt[shift])
+    print("Shifted options")
+    for shift in shift_pt:
+        print(shift, shift_pt[shift])
