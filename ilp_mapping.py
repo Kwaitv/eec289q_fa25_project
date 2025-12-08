@@ -1,5 +1,3 @@
-import os
-os.environ['GRB_LICENSE_FILE'] = '/home/k6vu/.local/opt/gurobi/gurobi.lic'
 import gurobipy as gp
 import boolean_network_generation_adam as bn
 
@@ -78,13 +76,11 @@ for or_gate in bn.ORs:
         print(or_gate, bn.ORs[or_gate])
     C = or_pt[or_gate]
     reduce = 0
-    count = 0
 
     for impl in bn.ORs[or_gate].ands:
         A = and_pt[impl]
         mcm_ilp.addConstr(C - A >= 0)
         reduce += A
-        count += 1
 
     mcm_ilp.addConstr(reduce - C >= 0)
     mcm_ilp.update()
