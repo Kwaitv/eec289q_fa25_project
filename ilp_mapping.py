@@ -16,9 +16,9 @@ import boolean_network_generation as bn
 # run sorted
 
 def ilp_mapping(coeffs_int, Minimal_PTs, Minimal_PTs_arr, ANDs, ORs):
-    print(Minimal_PTs_arr)
+    #print(Minimal_PTs_arr)
     pts = Minimal_PTs_arr + sorted(list(ORs.keys()))
-    print('pts',pts)
+    #print('pts',pts)
 
     def has_shift(key):
         return key.split("_")[0] == "1"
@@ -46,15 +46,15 @@ def ilp_mapping(coeffs_int, Minimal_PTs, Minimal_PTs_arr, ANDs, ORs):
         filter(has_shift, ANDs.keys()), name='shift', vtype=gp.GRB.BINARY)
 
     # enumerating time
-    print("primal:", prime_pt, "\n")
-    print("and", and_pt, "\n")
-    print("or", or_pt, "\n")
-    print("shift", shift_pt, "\n")
+    #print("primal:", prime_pt, "\n")
+    #print("and", and_pt, "\n")
+    #print("or", or_pt, "\n")
+    #print("shift", shift_pt, "\n")
 
     # And Constraints
     for and_gate in ANDs:
         pt1, pt2, pt = map(int, and_gate.split("_"))
-        print("and gate", pt1, pt2, pt, ANDs[and_gate])
+        #print("and gate", pt1, pt2, pt, ANDs[and_gate])
         C = and_pt[and_gate]
         A = shift_pt[f'{pt1}_{pt2}_{pt}'] if (pt1 == 1) else \
             prime_pt[pt1] if (pt1 in Minimal_PTs_arr) else \
@@ -68,7 +68,7 @@ def ilp_mapping(coeffs_int, Minimal_PTs, Minimal_PTs_arr, ANDs, ORs):
 
     # instantiate ors after
     for or_gate in ORs:
-        print(or_gate, ORs[or_gate])
+        #print(or_gate, ORs[or_gate])
         C = or_pt[or_gate]
         reduce = 0
         count = 0
@@ -81,12 +81,12 @@ def ilp_mapping(coeffs_int, Minimal_PTs, Minimal_PTs_arr, ANDs, ORs):
 
         mcm_ilp.addConstr(reduce - C >= 0)
         mcm_ilp.update()
-        print("reduce:", reduce - C)
+        #print("reduce:", reduce - C)
 
     # set POs high
     for or_gate in or_pt:
         if or_gate in coeffs_int:
-            print("PO", or_gate)
+            #print("PO", or_gate)
             mcm_ilp.addConstr(or_pt[or_gate] == 1)
 
     mcm_ilp.setObjective(
@@ -96,21 +96,21 @@ def ilp_mapping(coeffs_int, Minimal_PTs, Minimal_PTs_arr, ANDs, ORs):
 
     mcm_ilp.update()
     # pre run
-    print()
-    print("Model Pre Run")
-    print("primes", prime_pt)
+    #print()
+    #print("Model Pre Run")
+    #print("primes", prime_pt)
 
-    print("AND Gates")
-    for and_gate in and_pt:
-        print(and_gate, and_pt[and_gate])
+    #print("AND Gates")
+    #for and_gate in and_pt:
+        #print(and_gate, and_pt[and_gate])
 
-    print("OR Gates")
-    for or_gate in or_pt:
-        print(or_gate, or_pt[or_gate])
+    #print("OR Gates")
+    #for or_gate in or_pt:
+        #print(or_gate, or_pt[or_gate])
 
-    print("shifts")
-    for shift in shift_pt:
-        print(shift, shift_pt[shift])
+    #print("shifts")
+    #for shift in shift_pt:
+        #print(shift, shift_pt[shift])
 
 
     mcm_ilp.update()
@@ -118,18 +118,20 @@ def ilp_mapping(coeffs_int, Minimal_PTs, Minimal_PTs_arr, ANDs, ORs):
     mcm_ilp.update()
 
     # print solution
-    print()
-    print("Model Post Run")
-    print(prime_pt)
+    #print()
+    #print("Model Post Run")
+    #print(prime_pt)
 
-    print("AND Gates")
-    for and_gate in and_pt:
-        print(and_gate, and_pt[and_gate])
+    #print("AND Gates")
+    #for and_gate in and_pt:
+        #print(and_gate, and_pt[and_gate])
 
-    print("OR Gates")
-    for or_gate in or_pt:
-        print(or_gate, or_pt[or_gate])
+    #print("OR Gates")
+    #for or_gate in or_pt:
+        #print(or_gate, or_pt[or_gate])
 
-    print("Shifted options")
-    for shift in shift_pt:
-        print(shift, shift_pt[shift])
+    #print("Shifted options")
+    #for shift in shift_pt:
+        #print(shift, shift_pt[shift])
+
+    print('Final number of adders', mcm_ilp.ObjVal)

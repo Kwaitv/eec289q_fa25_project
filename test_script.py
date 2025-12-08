@@ -3,6 +3,7 @@ from ilp_mapping import ilp_mapping
 from boolean_network_generation import build_aset_dict, build_boolean_network
 from boolean_network_generation import AND, OR
 from util import inttocompl, compltoint, pos, odd
+from pathlib import Path
 
 def first_set_coeffs(seed = ''):
     
@@ -41,22 +42,54 @@ def parse_file(filename):
         print(f'Error finding file: {e}')
         return []
 
-if __name__ == '__main__':
-    #coeff_sets = first_set_coeffs()
-    filter1_file_name = 'filter-benchmarks/remez-filters-table-2/coeffs/filter1-coeff.txt'
+def parse_directory(directory_path):
+    coeffs = []
+    folder = Path(directory_path)
+
+    if not folder.is_dir():
+        raise NotADirectoryError(f"'{directory_path}' is not a valid directory.")
     
-    filter1_bin = parse_file(filter1_file_name)
-    filter1_bin_set_i = set(filter1_bin) # remove duplicates
-    filter1_pos_odd = [odd(pos(coeff)) for coeff in filter1_bin_set_i \
-                        if compltoint(coeff) != 0 and compltoint(coeff) != -1]
-    filter1_bin_set_f = list(set(filter1_pos_odd)) # remove duplicates
+    for file_path in sorted(folder.glob('*.txt')):
+        try:
+            with open(file_path, 'r') as f:
+                # Parse the individual file
+                row_data = f.read()
+                row_data = row_data.replace('[','').replace(']\n','')
+                coeffs_row = row_data.split(', ')
+                
+                # Check consistency: Ensure we only add valid lists
+                if isinstance(coeffs_row, list):
+                    coeffs.append(coeffs_row)
+                else:
+                    print(f"Skipping {file_path.name}: Content is not a list.")
+                    
+        except Exception as e:
+            print(f"Error reading {file_path.name}: {e}")
 
-    Aset_dict_bin, Aset_dict_val = build_aset_dict(filter1_bin_set_f)
+    return coeffs
 
-    filter1 = [compltoint(coeff) for coeff in filter1_bin_set_f if compltoint(coeff) != 1]
+if __name__ == '__main__':
+    coeff_sets = parse_directory('filter-benchmarks/remez-filters-table-2/coeffs')
+    
+    for i,coeff_set in enumerate(coeff_sets):
+        print('Working on coeff_set', i)
 
-    ORs, ANDs, Minimal_PTs = build_boolean_network(Aset_dict_bin, Aset_dict_val, filter1)
+        filter_bin_set_i = set(coeff_set) # remove duplicates
+        filter_pos_odd = [odd(pos(coeff)) for coeff in filter_bin_set_i \
+                             if compltoint(coeff) != 0 and compltoint(coeff) != -1]
 
-    Minimal_PTs_arr = sorted(list(Minimal_PTs))
+        filter_bin_set_f = list(set(filter_pos_odd)) # remove duplicates
 
-    ilp_mapping(filter1, Minimal_PTs, Minimal_PTs_arr, ANDs, ORs)
+        print('Finished normalizing coeffs')
+        Aset_dict_bin, Aset_dict_val = build_aset_dict(filter_bin_set_f)
+
+        filter_vals = [compltoint(coeff) for coeff in filter_bin_set_f if compltoint(coeff) != 1]
+        filter_sorted = filter_vals.sort(reverse=True)
+
+        print('Generating boolean network')
+        ORs, ANDs, Minimal_PTs = build_boolean_network(Aset_dict_bin, Aset_dict_val, filter_vals)
+
+        Minimal_PTs_arr = sorted(list(Minimal_PTs))
+
+        print('Entering ILP mapping and calling Gurobi')
+        ilp_mapping(filter_vals, Minimal_PTs, Minimal_PTs_arr, ANDs, ORs)

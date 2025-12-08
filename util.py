@@ -90,13 +90,14 @@ def construct_partial_terms(partial_term_bin):
                                 for (term1, term2) in partial_term_pairs]
     
     partial_term_pairs_set_bin = list({tuple(sorted(x)) for x in partial_term_pairs_pos_odd})
+
     partial_term_pairs_set_val = []
 
-    for (bin_term1, bin_term2) in partial_term_pairs_set_bin:
+    for i, (bin_term1, bin_term2) in enumerate(partial_term_pairs_set_bin):
         for (int_term1, int_term2) in partial_term_pairs:
             # if bin_term1 shifted to the left in (int_term1, int_term2)
             # and bin_term2 be shifted to the left in (int_term1, int_term2)
-            # then, add to partial_term_paris_set_val
+            # then, add to partial_term_pairs_set_val
 
             reduced_term1 = compltoint(bin_term1)
             reduced_term2 = compltoint(bin_term2)
@@ -126,28 +127,28 @@ def construct_partial_terms(partial_term_bin):
             if found_match1 and found_match2:
                 partial_term_pairs_set_val.append((int_term1, int_term2))
                 break
+    
+    # remove partial term pairs with overlapping 1's
 
-    new_partial_term_pairs_set_val = set([])
-    new_partial_term_pairs_set_bin = set([])
+    reduced_partial_term_pairs_set_bin = []
+    reduced_partial_term_pairs_set_val = []
 
-    for i, (val_term1, val_term2) in enumerate(partial_term_pairs_set_val):
-        
-        val_term1_bin = inttocompl(val_term1, bit_width)
-        val_term2_bin = inttocompl(val_term2, bit_width)
+    for i, (val_p1, val_p2) in enumerate(partial_term_pairs_set_val):
 
-        reduced_term1_bin, reduced_term2_bin = partial_term_pairs_set_bin[i]
+        val_p1_bin = inttocompl(val_p1, bit_width)
+        val_p2_bin = inttocompl(val_p2, bit_width)
 
         include_term = True
 
-        for i, bit in enumerate(val_term1_bin):
-            if val_term1_bin[i] == '1' and val_term2_bin[i] == '1':
+        for j, bit in enumerate(val_p1_bin):
+            if val_p1_bin[j] == '1' and val_p2_bin[j] == '1':
                 include_term = False
-
+        
         if include_term:
-            new_partial_term_pairs_set_val.add((val_term1, val_term2))
-            new_partial_term_pairs_set_bin.add((reduced_term1_bin, reduced_term2_bin))
-    
-    return list(new_partial_term_pairs_set_val), list(new_partial_term_pairs_set_bin)
+            reduced_partial_term_pairs_set_bin.append((odd(pos(val_p1_bin)), odd(pos(val_p2_bin))))
+            reduced_partial_term_pairs_set_val.append((val_p1,val_p2))
+
+    return list(reduced_partial_term_pairs_set_val), list(reduced_partial_term_pairs_set_bin)
 
 #if __name__ == '__main__':
 #    for i in ['111111000101110100111010', '111011100011110001001010', '111111110111100000100000',
