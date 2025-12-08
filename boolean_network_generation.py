@@ -344,10 +344,10 @@ def build_boolean_network(Aset_dict_bin, Aset_dict_val, POs):
                 int_p1, int_p2 = map(bool_tran, [val_p1, val_p2])
                 sorted_p1, sorted_p2 = util.order(int_p1, int_p2)
 
-                ANDs[f'{sorted_p1}_{sorted_p2}'] = \
+                ANDs[f'{sorted_p1}_{sorted_p2}_{pt}'] = \
                     AND(sorted_p1, sorted_p2, pt)
 
-                ORs[pt].ands.append(f'{sorted_p1}_{sorted_p2}')
+                ORs[pt].ands.append(f'{sorted_p1}_{sorted_p2}_{pt}')
 
                 # Extract positive and odd coefficients
                 for pt_int in map(util.compltoint, Aset_dict_bin[pt][i]):

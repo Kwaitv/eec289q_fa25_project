@@ -53,10 +53,10 @@ def ilp_mapping(coeffs_int, Minimal_PTs, Minimal_PTs_arr, ANDs, ORs):
 
     # And Constraints
     for and_gate in ANDs:
-        pt1, pt2 = map(int, and_gate.split("_"))
-        print("and gate", pt1, pt2, ANDs[and_gate])
+        pt1, pt2, pt = map(int, and_gate.split("_"))
+        print("and gate", pt1, pt2, pt, ANDs[and_gate])
         C = and_pt[and_gate]
-        A = shift_pt[f'{pt1}_{pt2}'] if (pt1 == 1) else \
+        A = shift_pt[f'{pt1}_{pt2}_{pt}'] if (pt1 == 1) else \
             prime_pt[pt1] if (pt1 in Minimal_PTs_arr) else \
             or_pt[pt1]
         B = prime_pt[pt2] if (pt2 in Minimal_PTs_arr) else \
