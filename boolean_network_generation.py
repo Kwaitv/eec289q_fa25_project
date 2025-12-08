@@ -332,6 +332,10 @@ def build_boolean_network(Aset_dict_bin, Aset_dict_val, POs):
 
         for pt in PTs:
 
+            if minimal(pt):
+                Minimal_PTs.add(pt)
+                continue
+
             ORs[pt] = OR(pt=pt)
 
             for i, (val_p1, val_p2) in enumerate(Aset_dict_val[pt]):
