@@ -1,9 +1,15 @@
 import util
 import numpy as np
 
+ORs = {} # {pt:OR(pt,['p1_p2', 'p3_p4',...]), pt_next:OR(pt_next, 'p8_p9', ... ), ....}
+ANDs = {} # {'p1_p2':AND(p1,p2,pt), 'p3_p4':AND(p3,p4,pt), ...}
+Minimal_PTs = set([]) # ['opt3', 'opt5', 'opt9', ...]
+Minimal_PTs_arr = []
+
 
 class LogicGate:
     """The abstract base class for all logic gates."""
+
     def __init__(self, label):
         self.label = label
         self.output = None
@@ -18,37 +24,42 @@ class LogicGate:
 
 class BinaryGate(LogicGate):
     """A class representing gates with two inputs (A and B)."""
+
     def __init__(self, label):
         super().__init__(label)
         self.pin_a = None
         self.pin_b = None
-    
+
+
 class Adder(BinaryGate):
     """Simulates an Arithmetic Adder (SUM block)."""
+
     def set_pins(self, gate1, gate2):
         self.pin_a = gate1
         self.pin_b = gate2
-    
+
     def get_output(self):
         val_a = self.get_pin_value(self.pin_a)
         val_b = self.get_pin_value(self.pin_b)
         return val_a + val_b
-    
+
+
 class Mux(LogicGate):
     """
-    Simulates a Multiplexer. 
+    Simulates a Multiplexer.
     For this synthesis context, it takes a list of possible inputs.
-    (In a real circuit, it would need a selector signal, here we default to index 0 
-    or just store the candidates for synthesis analysis).
+    (In a real circuit, it would need a selector signal, here we default
+    to index 0 or just store the candidates for synthesis analysis).
     """
+
     def __init__(self, label, inputs=None):
         super().__init__(label)
         self.inputs = inputs if inputs else []
-        self.selector = 0 # Default to first input for simulation
-        
+        self.selector = 0  # Default to first input for simulation
+
     def add_input(self, gate):
         self.inputs.append(gate)
-        
+
     def set_selector(self, index):
         self.selector = index
 
@@ -62,33 +73,32 @@ class Mux(LogicGate):
         else:
             return int(selected_gate)
 
+
 def build_adder_mux_network(aset_dict_bin, aset_dict_val):
     """
     Constructs the network based on the Aset_dict definitions.
-    
+
     Args:
         aset_dict_bin: Dict {coeff: [(p1, p2), ...]} where p1, p2, ... are in 2's complement binary
         aset_dict_val: Dict {coeff: [(p1, p2), ...]} where p1, p2, ... are in decimal
     """
-    
-    # Registry to store constructed gates.
-    # Maps Coefficient at level x to gate objects 
-    # level (int) -> {coeff (int) -> Gate Object}
-    term_registry = {
-        0:{
-            1: 'input_wire'  # Base case: Coeff 1 is the input signal itself
-        }
-    }
 
-    # Helper to get a wire (either existing gate or raw value) and returns the last
-    # logic level
+    # Registry to store constructed gates.
+    # Maps Coefficient at level x to gate objects
+    # level (int) -> {coeff (int) -> Gate Object}
+    term_registry = {0: {
+            1: 'input_wire'  # Base case: Coeff 1 is the input signal itself
+    }}
+
+    # Helper to get a wire (either existing gate or raw value) and returns the
+    # last logic level
     def get_wire(val):
 
         for logic_level in term_registry.keys():
             if val in term_registry[logic_level]:
                 return term_registry[logic_level][val], logic_level
-        
-        # If term doesn't exist, we assume it's a raw 0 
+
+        # If term doesn't exist, we assume it's a raw 0
         # or implies an error in the sort order of Aset_dict
         return 0, -1
 
@@ -112,24 +122,25 @@ def build_adder_mux_network(aset_dict_bin, aset_dict_val):
                 wire_p2 = f'1_<<_{np.log2(val_p2)}'
             else:
                 wire_p2, logic_level_p2 = get_wire(util.compltoint(p2))
-            
+
             if (not new_level):
                 last_logic_level = len(term_registry.keys())
-                if (logic_level_p1 == last_logic_level or logic_level_p2 == last_logic_level):
+                if (logic_level_p1 == last_logic_level or
+                        logic_level_p2 == last_logic_level):
                     continue
 
             option_adder = Adder(f"Add_{coeff}_opt({val_p1},{val_p2})")
             print(f"Created option Adder for {coeff}: {val_p1} and {val_p2}")
 
             option_adder.set_pins(wire_p1, wire_p2)
-            
+
             # Add this adder as an input to the Mux
             mux.add_input(option_adder)
 
             return mux
 
-
-    # Iterate through coefficients (ensure we build small terms before large ones)
+    # Iterate through coefficients
+    # (ensure we build small terms before large ones)
     coeffs_queue = list(aset_dict_bin.keys())
     coeffs_queue.sort()
 
@@ -144,7 +155,7 @@ def build_adder_mux_network(aset_dict_bin, aset_dict_val):
         pairs = aset_dict_bin[coeff]
         input_gate = False
 
-        for i, (p1,p2) in enumerate(pairs):
+        for i, (p1, p2) in enumerate(pairs):
             input_gate = util.compltoint(p1) == 1 and util.compltoint(p2) == 1
             input_pair_index = i
 
@@ -154,15 +165,15 @@ def build_adder_mux_network(aset_dict_bin, aset_dict_val):
 
         # CASE 1: Input Gate -> Create a simple SUM block
         if input_gate:
-                
+
             val_p1, val_p2 = aset_dict_val[coeff][input_pair_index]
             p1, p2 = aset_dict_bin[coeff][input_pair_index]
 
             # Create the Adder
             new_adder = Adder(f"Add_({val_p1, val_p2})")
-            
-            # Wire inputs         
-            
+
+            # Wire inputs
+
             if (val_p1 == 1):
                 wire_p1 = term_registry[0][1]
             else:
@@ -172,17 +183,18 @@ def build_adder_mux_network(aset_dict_bin, aset_dict_val):
                 wire_p2 = term_registry[0][1]
             else:
                 wire_p2 = f'1_<<_{np.log2(val_p2)}'
-                        
+
             new_adder.set_pins(wire_p1, wire_p2)
-            
+
             # Register this new adder as the source for 'coeff'
-            new_logic_level =  1
+            new_logic_level = 1
 
             if (new_logic_level not in term_registry):
                 term_registry[new_logic_level] = {}
 
             term_registry[new_logic_level][coeff] = new_adder
-            print(f"Created Adder for {coeff} using inputs {val_p1} and {val_p2}")
+            print(f"Created Adder for {coeff} using inputs {
+                  val_p1} and {val_p2}")
 
         # CASE 2: Multiple Pairs -> Create MUX of SUMs
         else:
@@ -208,29 +220,30 @@ def build_adder_mux_network(aset_dict_bin, aset_dict_val):
                     wire_p2 = f'1_<<_{np.log2(val_p2)}'
                 else:
                     wire_p2, logic_level_p2 = get_wire(util.compltoint(p2))
-                
+
                 if (wire_p1 == 0 or wire_p2 == 0):
                     all_inputs_constructed = False
-            
+
             if (not all_inputs_constructed):
                 coeffs_queue.append(coeff)
                 print('Not all partial terms constructed')
                 continue
-            
+
             print('All partial terms constructed')
 
             # Create the Mux
             new_mux = Mux(f"Mux_{coeff}")
-            
+
             connected_mux = connect_mux_inputs(new_mux, coeff, pairs)
-            
-            # Register the Mux as the source for 'coeff'            
+
+            # Register the Mux as the source for 'coeff'
             last_logic_level = len(term_registry.keys())
 
-            if (len(connected_mux.inputs) > 0):            
+            if (len(connected_mux.inputs) > 0):
                 term_registry[last_logic_level][coeff] = connected_mux
             else:
-                connected_mux = connect_mux_inputs(new_mux, coeff, pairs, new_level=True)
+                connected_mux = connect_mux_inputs(
+                    new_mux, coeff, pairs, new_level=True)
                 new_logic_level = last_logic_level + 1
 
                 term_registry[new_logic_level] = {}
@@ -243,6 +256,7 @@ def build_adder_mux_network(aset_dict_bin, aset_dict_val):
 
     return last_mux, term_registry
 
+
 def print_adder_mux_network(logic_gate):
     """
     Recursively prints the structure of a LogicGate.
@@ -251,110 +265,104 @@ def print_adder_mux_network(logic_gate):
     if logic_gate == 'input_wire':
         print('input_wire')
         return
-    
+
     print(logic_gate.get_label())
 
     if isinstance(logic_gate, Adder):
         print_adder_mux_network(logic_gate.pin_a)
         print_adder_mux_network(logic_gate.pin_b)
-    
+
     if isinstance(logic_gate, Mux):
         for gate in logic_gate.inputs:
             print_adder_mux_network(gate)
-    
+
 
 class AND:
-    def __init__(self, p1 = None, p2 = None, pt = None):
+    def __init__(self, p1, p2, pt):
         self.p1 = p1
         self.p2 = p2
         self.pt = pt
-
         self.en = 0
 
     def __repr__(self):
         return f'AND({self.pt},{self.p1},{self.p2})'
 
-class OR:
-    def __init__(self, pt = None, ands = None):
-        
-        if ands is None:
-            self.ands = []
-        else:
-            self.ands = ands
 
+class OR:
+    def __init__(self, pt=None):
+        self.ands = []
         self.pt = pt
 
     def __repr__(self):
 
         return f"OR({self.pt},[{', '.join(self.ands)}])"','
 
-ORs = {} # {pt:OR(pt,['p1_p2', 'p3_p4',...]), pt_next:OR(pt_next, 'p8_p9', ... ), ....}
-ANDs = {} # {'p1_p2':AND(p1,p2,pt), 'p3_p4':AND(p3,p4,pt), ...}
-Minimal_PTs = set([]) # ['opt3', 'opt5', 'opt9', ...]
 
-def build_boolean_netowrk(Aset_dict_bin, Aset_dict_val, POs):
+def build_boolean_network(Aset_dict_bin, Aset_dict_val, POs):
 
     def minimal(pt):
-        minimal_val = False
-        
-        if pt == 1:
+        minimal_test = False
+
+        temp_pt = util.iodd(pt)
+
+        if temp_pt == 1:
             return True
 
         for i, (p1, p2) in enumerate(Aset_dict_bin[pt]):
             if util.compltoint(p1) == 1 and util.compltoint(p2) == 1:
-                minimal_val = True
-        
-        return minimal_val
+                minimal_test = True
+        return minimal_test
 
     def bfs(PTs):
-        
+
         if (len(PTs) == 0):
             return
 
         next_PTs = set([])
 
+        bool_tran = util.nop
+        if 1:
+            bool_tran = util.iodd
+
         for pt in PTs:
-        
+
             ORs[pt] = OR(pt=pt)
 
-            for i, (val_p1,val_p2) in enumerate(Aset_dict_val[pt]):
+            for i, (val_p1, val_p2) in enumerate(Aset_dict_val[pt]):
                 if (val_p1 in PTs or val_p2 in PTs):
                     continue
-                
-                ANDs[f'{val_p1}_{val_p2}'] = AND(val_p1,val_p2,pt)
-                ORs[pt].ands.append(f'{val_p1}_{val_p2}')
+                int_p1, int_p2 = map(bool_tran, [val_p1, val_p2])
+                sorted_p1, sorted_p2 = util.order(int_p1, int_p2)
+
+                ANDs[f'{sorted_p1}_{sorted_p2}'] = \
+                    AND(sorted_p1, sorted_p2, pt)
+
+                ORs[pt].ands.append(f'{sorted_p1}_{sorted_p2}')
 
                 # Extract positive and odd coefficients
-                p1, p2 = Aset_dict_bin[pt][i]
-                p1_int = util.compltoint(p1)
-                p2_int = util.compltoint(p2)
+                for pt_int in map(util.compltoint, Aset_dict_bin[pt][i]):
+                    if minimal(pt_int):
+                        Minimal_PTs.add(pt_int)
+                    else:
+                        next_PTs.add(pt_int)
 
-                if not minimal(p1_int):
-                    next_PTs.add(p1_int)
-                else:
-                    Minimal_PTs.add(f'optvar{p1_int}')
-
-                if not minimal(p2_int):
-                    next_PTs.add(p2_int)
-                else:
-                    Minimal_PTs.add(f'optvar{p2_int}')
-        
         bfs(next_PTs)
-        
+
         return
 
     bfs(POs)
 
-#coeffs = ['00011010', '01001011', '11111110', '11111111', '00000111', '01000001', '00001001', '00000100', '00011100', '10010110']
+
+# coeffs = ['00011010', '01001011', '11111110', '11111111', '00000111', '01000001', '00001001', '00000100', '00011100', '10010110']
 coeffs = ['00001111']
 bit_width = len(coeffs[0])
 
 Cset = [util.compltoint(util.odd(util.pos(coeff))) for coeff in coeffs]
 
 # Use this for a more efficient queue structure
-#Cset = deque(Cset)
+# Cset = deque(Cset)
 
-#print('coeffs_pos_odd', Cset)
+# print('coeffs_pos_odd', Cset)
 
 Cset.sort(reverse=True)
 
@@ -362,37 +370,40 @@ Aset_dict_bin = {}
 Aset_dict_val = {}
 
 while len(Cset) > 0:
-#    print(f'Cset {Cset}')
+    # print(f'Cset {Cset}')
     coeff = Cset.pop(0)
 
     if (coeff == 1):
         break
 
 #    print(f'Constructing partial term pairs for {coeff}')
-    
+
     partial_term_pairs_set_val, partial_term_pairs_set_bin = util.construct_partial_terms(util.inttocompl(coeff, bit_width))
 #    print('partial term pairs in bin', partial_term_pairs_bin)
 
     # Flatten set of tuples into a set of distinct values
     partial_terms_set = {util.compltoint(item) for t in partial_term_pairs_set_bin for item in t}
-    
+
     Cset = list(set(Cset + list(partial_terms_set)))
     Cset.sort(reverse=True)
 
     Aset_dict_bin[coeff] = partial_term_pairs_set_bin
     Aset_dict_val[coeff] = partial_term_pairs_set_val
+
 #    print(f'Aset_dict_val[{coeff}] = {Aset_dict_val[coeff]}')
 #    print(f'Aset_dict_bin[{coeff}] = {Aset_dict_bin[coeff]}')
 
-#last_mux, term_registry = build_adder_mux_network(Aset_dict_bin, Aset_dict_val)
+# last_mux, term_registry = build_adder_mux_network(Aset_dict_bin, Aset_dict_val)
 
-#print_adder_mux_network(last_mux)
+# print_adder_mux_network(last_mux)
 
-#print(Aset_dict_val)
+# print(Aset_dict_val)
 
 coeffs_int = [util.compltoint(coeff) for coeff in coeffs]
-build_boolean_netowrk(Aset_dict_bin, Aset_dict_val, coeffs_int)
+build_boolean_network(Aset_dict_bin, Aset_dict_val, coeffs_int)
+Minimal_PTs_arr = sorted(list(Minimal_PTs))
 
-print(ORs)
-print(ANDs)
-print(Minimal_PTs)
+if __name__ == "__main__":
+    print(ORs)
+    print(ANDs)
+    print(Minimal_PTs)
