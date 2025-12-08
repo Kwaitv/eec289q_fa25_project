@@ -72,7 +72,6 @@ def iodd(n):
 
 
 def odd(binary_string):
-
     while binary_string[-1] != '1':
         binary_string = binary_string[:-1]
         binary_string = '0' + binary_string

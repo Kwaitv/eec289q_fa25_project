@@ -1,7 +1,7 @@
-import os
-os.environ['GRB_LICENSE_FILE'] = '/home/k6vu/.local/opt/gurobi/gurobi.lic'
+#import os
+#os.environ['GRB_LICENSE_FILE'] = '/home/k6vu/.local/opt/gurobi/gurobi.lic'
 import gurobipy as gp
-import boolean_network_generation_adam as bn
+import boolean_network_generation as bn
 
 # data format
 
@@ -15,95 +15,85 @@ import boolean_network_generation_adam as bn
 # generate gurobipi model
 # run sorted
 
-if __name__ == "__main__":
-    print(bn.Minimal_PTs_arr)
-pts = bn.Minimal_PTs_arr + sorted(list(bn.ORs.keys()))
-if __name__ == "__main__":
-    print("pts", pts)
+def ilp_mapping(coeffs_int, Minimal_PTs, Minimal_PTs_arr, ANDs, ORs):
+    print(Minimal_PTs_arr)
+    pts = Minimal_PTs_arr + sorted(list(ORs.keys()))
+    print('pts',pts)
+
+    def has_shift(key):
+        return key.split("_")[0] == "1"
+
+    mcm_ilp = gp.Model('multiple constant multiplication', env=gp.Env())
+
+    mcm_ilp.setParam('OutputFlag', 0)
+    mcm_ilp.setParam('PoolSolutions', 1)
+    mcm_ilp.setParam('PoolSearchMode', 2)
+    # mcm_ilp.setParam('TimeLimit', 10*60*60)
+    mcm_ilp.setParam('TimeLimit', 10)
+    mcm_ilp.update()
 
 
-def has_shift(key):
-    return key.split("_")[0] == "1"
+    prime_pt = mcm_ilp.addVars(
+        Minimal_PTs, name='primal', vtype=gp.GRB.BINARY)
 
+    and_pt = mcm_ilp.addVars(
+        ANDs, name='and', vtype=gp.GRB.BINARY)
 
-mcm_ilp = gp.Model('multiple constant multiplication', env=gp.Env())
+    or_pt = mcm_ilp.addVars(
+        ORs, name='or', vtype=gp.GRB.BINARY)
 
-mcm_ilp.setParam('OutputFlag', 0)
-mcm_ilp.setParam('PoolSolutions', 1)
-mcm_ilp.setParam('PoolSearchMode', 2)
-# mcm_ilp.setParam('TimeLimit', 10*60*60)
-mcm_ilp.setParam('TimeLimit', 10)
-mcm_ilp.update()
+    shift_pt = mcm_ilp.addVars(
+        filter(has_shift, ANDs.keys()), name='shift', vtype=gp.GRB.BINARY)
 
-
-prime_pt = mcm_ilp.addVars(
-    bn.Minimal_PTs, name='primal', vtype=gp.GRB.BINARY)
-
-
-and_pt = mcm_ilp.addVars(
-    bn.ANDs, name='and', vtype=gp.GRB.BINARY)
-
-or_pt = mcm_ilp.addVars(
-    bn.ORs, name='or', vtype=gp.GRB.BINARY)
-
-shift_pt = mcm_ilp.addVars(
-    filter(has_shift, bn.ANDs.keys()), name='shift', vtype=gp.GRB.BINARY)
-
-if __name__ == "__main__":
     # enumerating time
     print("primal:", prime_pt, "\n")
     print("and", and_pt, "\n")
     print("or", or_pt, "\n")
     print("shift", shift_pt, "\n")
 
-# And Constraints
-for and_gate in bn.ANDs:
-    pt1, pt2 = map(int, and_gate.split("_"))
-    if __name__ == "__main__":
-        print("and gate", pt1, pt2, bn.ANDs[and_gate])
-    C = and_pt[and_gate]
-    A = shift_pt[f'{pt1}_{pt2}'] if (pt1 == 1) else \
-        prime_pt[pt1] if (pt1 in bn.Minimal_PTs_arr) else \
-        or_pt[pt1]
-    B = prime_pt[pt2] if (pt2 in bn.Minimal_PTs_arr) else \
-        or_pt[pt2]
+    # And Constraints
+    for and_gate in ANDs:
+        pt1, pt2 = map(int, and_gate.split("_"))
+        print("and gate", pt1, pt2, ANDs[and_gate])
+        C = and_pt[and_gate]
+        A = shift_pt[f'{pt1}_{pt2}'] if (pt1 == 1) else \
+            prime_pt[pt1] if (pt1 in Minimal_PTs_arr) else \
+            or_pt[pt1]
+        B = prime_pt[pt2] if (pt2 in Minimal_PTs_arr) else \
+            or_pt[pt2] 
+            
+        mcm_ilp.addConstr(A - C >= 0)
+        mcm_ilp.addConstr(B - C >= 0)
+        mcm_ilp.addConstr(C - A - B >= -1)
 
-    mcm_ilp.addConstr(A - C >= 0)
-    mcm_ilp.addConstr(B - C >= 0)
-    mcm_ilp.addConstr(C - A - B >= -1)
+    # instantiate ors after
+    for or_gate in ORs:
+        print(or_gate, ORs[or_gate])
+        C = or_pt[or_gate]
+        reduce = 0
+        count = 0
 
-# instantiate ors after
-for or_gate in bn.ORs:
-    if __name__ == "__main__":
-        print(or_gate, bn.ORs[or_gate])
-    C = or_pt[or_gate]
-    reduce = 0
-    count = 0
+        for impl in ORs[or_gate].ands:
+            A = and_pt[impl]
+            mcm_ilp.addConstr(C - A >= 0)
+            reduce += A
+            count += 1
 
-    for impl in bn.ORs[or_gate].ands:
-        A = and_pt[impl]
-        mcm_ilp.addConstr(C - A >= 0)
-        reduce += A
-        count += 1
-
-    mcm_ilp.addConstr(reduce - C >= 0)
-    mcm_ilp.update()
-    if __name__ == "__main__":
+        mcm_ilp.addConstr(reduce - C >= 0)
+        mcm_ilp.update()
         print("reduce:", reduce - C)
 
-# set POs high
-for or_gate in or_pt:
-    if or_gate in bn.coeffs_int:
-        if __name__ == "__main__":
+    # set POs high
+    for or_gate in or_pt:
+        if or_gate in coeffs_int:
             print("PO", or_gate)
-        mcm_ilp.addConstr(or_pt[or_gate] == 1)
+            mcm_ilp.addConstr(or_pt[or_gate] == 1)
 
-mcm_ilp.setObjective(
-    prime_pt.sum() + and_pt.sum(),
-    gp.GRB.MINIMIZE)
+    mcm_ilp.setObjective(
+        prime_pt.sum() + and_pt.sum(),
+        gp.GRB.MINIMIZE)
 
 
-if __name__ == "__main__":
     mcm_ilp.update()
     # pre run
     print()
@@ -123,12 +113,11 @@ if __name__ == "__main__":
         print(shift, shift_pt[shift])
 
 
-mcm_ilp.update()
-mcm_ilp.optimize()
-mcm_ilp.update()
+    mcm_ilp.update()
+    mcm_ilp.optimize()
+    mcm_ilp.update()
 
-# print solution
-if __name__ == "__main__":
+    # print solution
     print()
     print("Model Post Run")
     print(prime_pt)
