@@ -11,11 +11,6 @@ def inttocompl(n, width):
     mask = (1 << width) - 1
     return f'{n & mask:0{width}b}'
 
-def odd(fp):
-    while int(fp) % 2 != 1:
-        fp = fp >> 1
-    return fp
-
 def complprint(bin_string):
     print(f"'{bin_string}' ({len(bin_string)
                              }-bit) converts to: {compltoint(bin_string)}")
@@ -58,6 +53,23 @@ def pos(binary_string):
         return inttocompl(val, bit_width)
     else:
         return "".join(new_string)
+
+
+def order(a, b):
+    if a > b:
+        return b, a
+    else:
+        return a, b
+
+
+def nop(i):
+    return i
+
+def iodd(n):
+    while n % 2 == 0:
+        n = (n >> 1)
+    return n
+
 
 def odd(binary_string):
 
