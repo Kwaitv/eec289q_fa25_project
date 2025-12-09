@@ -29,7 +29,7 @@ def ilp_mapping(coeffs_int, Minimal_PTs, Minimal_PTs_arr, ANDs, ORs):
     mcm_ilp.setParam('PoolSolutions', 1)
     mcm_ilp.setParam('PoolSearchMode', 2)
     # mcm_ilp.setParam('TimeLimit', 10*60*60)
-    mcm_ilp.setParam('TimeLimit', 10)
+    mcm_ilp.setParam('TimeLimit', 60)
     mcm_ilp.update()
 
 

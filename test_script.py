@@ -68,9 +68,15 @@ def parse_directory(directory_path):
 
     return coeffs
 
+def count_ones(bit_str):
+   return bit_str.count('1') 
+
+def coeff_size_heur(bit_str):
+    return 2**(count_ones(bit_str) - 1) - 1
+
 if __name__ == '__main__':
     coeff_sets = parse_directory('filter-benchmarks/remez-filters-table-2/coeffs')
-    
+
     for i,coeff_set in enumerate(coeff_sets):
         print('Working on coeff_set', i)
 
@@ -79,6 +85,8 @@ if __name__ == '__main__':
                              if compltoint(coeff) != 0 and compltoint(coeff) != -1]
 
         filter_bin_set_f = list(set(filter_pos_odd)) # remove duplicates
+        print(len(filter_bin_set_f))
+        print("walk values", sum([coeff_size_heur(val) for val in filter_bin_set_f]))
 
         print('Finished normalizing coeffs')
         Aset_dict_bin, Aset_dict_val = build_aset_dict(filter_bin_set_f)
